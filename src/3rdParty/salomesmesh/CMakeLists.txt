@@ -23,6 +23,17 @@ include_directories(
     src/StdMeshers
     inc
 )
+
+if(FREECAD_BUILD_FEM_NETGEN)
+  include_directories(
+      src/NETGEN/libsrc/occ
+      src/NETGEN/libsrc/meshing
+      src/NETGEN/libsrc/general
+      src/NETGEN/libsrc/linalg
+      src/NETGEN/nglib
+  )
+endif(FREECAD_BUILD_FEM_NETGEN)
+
 link_directories(${OCC_LIBRARY_DIR})
 
 if(MSVC)
@@ -394,23 +405,23 @@ endif(MSVC)
 # StdMeshers #
 ##############
 FILE(GLOB StdMeshers_source_files src/StdMeshers/*.cpp inc/StdMeshers_*.h*)
-ADD_LIBRARY(StdMeshers SHARED ${StdMeshers_source_files})
+ADD_LIBRARY(StdMeshers SHARED ${StdMeshers_source_files} ${MEFISTO2_source_files})
 
 if(MSVC)
-    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS} MEFISTO2)
+    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS})
     set_target_properties(StdMeshers PROPERTIES COMPILE_FLAGS "-DSTDMESHERS_EXPORTS")
     set_target_properties(StdMeshers PROPERTIES DEBUG_OUTPUT_NAME "StdMeshersd")
     set_target_properties(StdMeshers PROPERTIES OUTPUT_NAME "StdMeshers")
     set_target_properties(StdMeshers PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set_target_properties(StdMeshers PROPERTIES PREFIX "../")
 elseif(MINGW)
-    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS} MEFISTO2)
+    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS})
     set_target_properties(StdMeshers PROPERTIES COMPILE_FLAGS "-DSTDMESHERS_EXPORTS")
     set_target_properties(StdMeshers PROPERTIES OUTPUT_NAME "StdMeshers")
     set_target_properties(StdMeshers PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set_target_properties(StdMeshers PROPERTIES PREFIX "")
 else(MSVC)
-    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS}  MEFISTO2)
+    TARGET_LINK_LIBRARIES(StdMeshers SMESH ${SMESH_LIBS})
     # special compiler flag for g++ 64-bit
     IF (${CMAKE_SIZEOF_VOID_P} MATCHES "8")
         IF(CMAKE_COMPILER_IS_GNUCXX)
@@ -435,11 +446,31 @@ endif(MSVC)
 if (FREECAD_BUILD_FEM_NETGEN)
 
 ################
+# NETGEN       #
+################
+
+include(ExternalProject)
+ExternalProject_Add(netgen_library
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/NETGEN
+  CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-gui --enable-occ
+  BUILD_COMMAND make
+  INSTALL_COMMAND make install PREFIX=${CMAKE_CURRENT_BINARY_DIR}/NETGEN
+)
+
+ExternalProject_Get_Property(netgen_library install_dir)
+
+add_library(nglib STATIC IMPORTED)
+set_property(TARGET nglib PROPERTY IMPORTED_LOCATION ${install_dir}/lib/libnglib.so)
+add_dependencies(nglib netgen_library)
+
+message("path: ${install_dir}/lib/libnglib.so")
+MESSAGE("print: ${nglib}")
+################
 # NETGENPlugin #
 ################
 FILE(GLOB NETGENPlugin_source_files src/NETGENPlugin/*.cpp inc/NETGENPlugin_*.h* )
 ADD_LIBRARY(NETGENPlugin SHARED ${NETGENPlugin_source_files})
-TARGET_LINK_LIBRARIES(NETGENPlugin SMDS SMESHDS SMESH StdMeshers  ${SMESH_LIBS} )
+TARGET_LINK_LIBRARIES(NETGENPlugin SMDS SMESHDS SMESH StdMeshers nglib ${SMESH_LIBS} )
 
 if(MSVC)
     set_target_properties(NETGENPlugin PROPERTIES COMPILE_FLAGS "-DNETGENPLUGIN_EXPORTS -DNO_PARALLEL_THREADS -DOCCGEOMETRY")

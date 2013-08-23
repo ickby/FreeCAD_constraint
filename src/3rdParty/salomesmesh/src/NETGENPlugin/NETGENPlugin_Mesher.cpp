@@ -62,8 +62,8 @@ namespace nglib {
 #include <meshing.hpp>
 //#include <ngexception.hpp>
 namespace netgen {
-  __declspec(dllimport) extern int OCCGenerateMesh (OCCGeometry&, Mesh*&, int, int, char*);
-  __declspec(dllimport) extern MeshingParameters mparam;
+  extern int OCCGenerateMesh (OCCGeometry&, Mesh*&, int, int, char*);
+  extern MeshingParameters mparam;
 }
 
 using namespace std;
@@ -203,7 +203,7 @@ void NETGENPlugin_Mesher::PrepareOCCgeometry(netgen::OCCGeometry&     occgeo,
 #if (OCC_VERSION_MAJOR << 16 | OCC_VERSION_MINOR << 8 | OCC_VERSION_MAINTENANCE) > 0x060100
     OCC_CATCH_SIGNALS;
 #endif
-    BRepMesh_IncrementalMesh::BRepMesh_IncrementalMesh (shape, 0.01, true);
+    BRepMesh_IncrementalMesh test(shape, 0.01, true);
   } catch (Standard_Failure) {
   }
   Bnd_Box bb;
